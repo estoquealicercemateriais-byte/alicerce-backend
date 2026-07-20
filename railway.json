@@ -3,6 +3,6 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "corepack pnpm --filter @workspace/api-server start"
+    "startCommand": "corepack pnpm install --ignore-scripts && corepack pnpm --filter @workspace/api-server build && PORT=$PORT corepack pnpm --filter @workspace/api-server start"
   }
 }
