@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "framework": "vite",
+  "installCommand": "cd ../.. && corepack pnpm@9.15.9 install --frozen-lockfile --ignore-scripts",
+  "buildCommand": "cd ../.. && corepack pnpm@9.15.9 --filter @workspace/whatsbot-dashboard build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
