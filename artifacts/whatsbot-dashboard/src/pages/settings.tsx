@@ -209,9 +209,7 @@ export default function SettingsPage() {
               <Input
                 type="url"
                 value={formData.evolutionApiUrl}
-                onChange={(e) =>
-                  setFormData({ ...formData, evolutionApiUrl: e.target.value })
-                }
+                disabled
                 placeholder="https://evolution.sua-api.com"
               />
             </div>
@@ -219,12 +217,7 @@ export default function SettingsPage() {
               <Label>Nome da Instância</Label>
               <Input
                 value={formData.evolutionInstance}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    evolutionInstance: e.target.value,
-                  })
-                }
+                disabled
                 placeholder="alicerce-principal"
               />
             </div>
@@ -233,9 +226,7 @@ export default function SettingsPage() {
               <Input
                 type="password"
                 value={formData.evolutionApiKey}
-                onChange={(e) =>
-                  setFormData({ ...formData, evolutionApiKey: e.target.value })
-                }
+                disabled
               />
             </div>
           </CardContent>

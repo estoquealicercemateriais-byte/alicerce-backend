@@ -26,8 +26,14 @@ Por padrao o backend nao envia respostas automaticas nem permite envio manual pe
 - `WHATSAPP_MANUAL_SEND_ENABLED=true`: habilita envio manual pela rota de conversas.
 - `ADMIN_API_KEY=...`: chave obrigatoria no header `x-admin-api-key` para envio manual quando ele estiver habilitado.
 - `EVOLUTION_WEBHOOK_SECRET=...`: se configurado, a rota `/api/webhook/evolution` exige o segredo no header `x-webhook-secret` ou na query `?secret=...`.
+- `EVOLUTION_API_URL=https://sua-evolution.up.railway.app`: URL publica da Evolution API do repositorio `estoquealicercemateriais-byte/alicercewats`.
+- `EVOLUTION_ALLOWED_ORIGIN=https://sua-evolution.up.railway.app`: origem permitida para chamadas de envio. Se omitida, usa a origem de `EVOLUTION_API_URL`.
+- `EVOLUTION_API_KEY=...`: chave da Evolution API.
+- `EVOLUTION_INSTANCE=...`: instancia WhatsApp da Evolution API.
 
 O webhook ignora mensagens de grupos, broadcasts, status e newsletters. Comandos `parar`, `sair`, `cancelar`, `bloquear`, `remover`, `descadastrar` e `stop` fecham a conversa e interrompem respostas automaticas.
+
+As credenciais da Evolution sao lidas somente das variaveis de ambiente do Railway. Campos antigos salvos no banco ou no painel nao sao usados para envio, evitando consumo acidental de outra API.
 
 ### Teste real no WhatsApp
 Para testar com seu proprio numero ou um contato escolhido, habilite temporariamente no Railway:

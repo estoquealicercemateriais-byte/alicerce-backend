@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { storeSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { getEvolutionConfig } from "../lib/evolutionConfig";
 
 const router = Router();
 
@@ -24,7 +25,6 @@ async function ensureSettings() {
     const [created] = await db.insert(storeSettingsTable).values({
       storeName: "Alicerce Materiais para Construção",
       openingHours: "Segunda a Sexta: 7h às 18h | Sábado: 7h às 13h",
-      evolutionApiUrl: "https://alicercewats-production.up.railway.app",
       botWelcomeMessage:
         "Olá! Bem-vindo à Alicerce Materiais para Construção! 🏗️\n\nComo posso ajudar?\n\n1️⃣ Consultar produtos e preços\n2️⃣ Solicitar orçamento\n3️⃣ Acompanhar pedido\n4️⃣ Horário e localização\n5️⃣ Falar com atendente",
     }).returning();
@@ -42,15 +42,23 @@ router.put("/settings", async (req, res): Promise<void> => {
   const parsed = settingsInputSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const existing = await ensureSettings();
+  const {
+    evolutionApiUrl: _evolutionApiUrl,
+    evolutionApiKey: _evolutionApiKey,
+    evolutionInstance: _evolutionInstance,
+    ...safeSettings
+  } = parsed.data;
   const [row] = await db
     .update(storeSettingsTable)
-    .set(parsed.data)
+    .set(safeSettings)
     .where(eq(storeSettingsTable.id, existing.id))
     .returning();
   res.json(toSettingsDto(row));
 });
 
 function toSettingsDto(row: typeof storeSettingsTable.$inferSelect) {
+  const evolutionConfig = getEvolutionConfig();
+
   return {
     id: row.id,
     storeName: row.storeName,
@@ -58,9 +66,9 @@ function toSettingsDto(row: typeof storeSettingsTable.$inferSelect) {
     phone: row.phone ?? null,
     whatsappNumber: row.whatsappNumber ?? null,
     openingHours: row.openingHours ?? null,
-    evolutionApiUrl: row.evolutionApiUrl ?? null,
-    evolutionApiKey: row.evolutionApiKey ?? null,
-    evolutionInstance: row.evolutionInstance ?? null,
+    evolutionApiUrl: evolutionConfig?.apiUrl ?? null,
+    evolutionApiKey: evolutionConfig ? "configured" : null,
+    evolutionInstance: evolutionConfig?.instance ?? null,
     botWelcomeMessage: row.botWelcomeMessage ?? null,
   };
 }

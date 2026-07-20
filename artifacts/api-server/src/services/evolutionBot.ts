@@ -16,6 +16,7 @@ import {
   maxAutomatedOffersPerRequest,
   parseDirectRemoteJid,
 } from "../lib/whatsappSafety";
+import { assertEvolutionApiUrlAllowed, getEvolutionConfig } from "../lib/evolutionConfig";
 
 const inboundFloodProtection = new FloodProtection({
   cooldownMs: 3_000,
@@ -34,6 +35,8 @@ export async function sendEvolutionMessage(
   to: string,
   text: string,
 ): Promise<void> {
+  assertEvolutionApiUrlAllowed(apiUrl);
+
   const outboundFingerprint = createMessageFingerprint(to, undefined, text);
   if (!outboundFloodProtection.shouldProcess(outboundFingerprint)) {
     logger.info({ to, fingerprint: outboundFingerprint }, "Skipping outbound message due to flood protection");
@@ -69,6 +72,8 @@ export async function sendEvolutionMedia(
   mediaType: "image" | "video" | "document" = "image",
   fileName?: string,
 ): Promise<void> {
+  assertEvolutionApiUrlAllowed(apiUrl);
+
   const outboundFingerprint = createMessageFingerprint(to, mediaUrl, caption);
   if (!outboundFloodProtection.shouldProcess(outboundFingerprint)) {
     logger.info({ to, fingerprint: outboundFingerprint }, "Skipping outbound media message due to flood protection");
@@ -212,12 +217,10 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
 
     // Get settings
     const [settings] = await db.select().from(storeSettingsTable);
-    const configuredUrl = settings?.evolutionApiUrl?.trim() || "https://alicercewats-production.up.railway.app";
-    const configuredKey = settings?.evolutionApiKey?.trim() || "";
-    const configuredInstance = settings?.evolutionInstance?.trim() || "";
+    const evolutionConfig = getEvolutionConfig();
 
-    if (!configuredKey || !configuredInstance) {
-      logger.warn({ phoneNumber, configuredUrl, configuredInstance: !!configuredInstance }, "Evolution API credentials missing; skipping outbound delivery");
+    if (!evolutionConfig) {
+      logger.warn({ phoneNumber }, "Evolution API environment config missing; skipping outbound delivery");
       return;
     }
 
@@ -226,9 +229,9 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
 
     try {
       await sendEvolutionMessage(
-        configuredUrl,
-        configuredKey,
-        configuredInstance,
+        evolutionConfig.apiUrl,
+        evolutionConfig.apiKey,
+        evolutionConfig.instance,
         phoneNumber,
         reply,
       );
@@ -258,9 +261,9 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
     // If user asked for products/offers, send active offers with images
     if (convo.botStep === "catalog" || text.trim().toLowerCase() === "1") {
       await sendActiveOffers(
-        configuredUrl,
-        configuredKey,
-        configuredInstance,
+        evolutionConfig.apiUrl,
+        evolutionConfig.apiKey,
+        evolutionConfig.instance,
         phoneNumber,
         convo.id,
       );
@@ -269,9 +272,9 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
     // If user asked about a specific product by keyword, send product info with image
     if (convo.botStep === "product_query") {
       await sendProductInfo(
-        configuredUrl,
-        configuredKey,
-        configuredInstance,
+        evolutionConfig.apiUrl,
+        evolutionConfig.apiKey,
+        evolutionConfig.instance,
         phoneNumber,
         convo.id,
         reply,

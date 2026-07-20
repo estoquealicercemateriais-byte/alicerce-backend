@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { conversationsTable, messagesTable, storeSettingsTable } from "@workspace/db";
+import { conversationsTable, messagesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { isAdminRequest } from "../lib/adminSecurity";
@@ -10,6 +10,7 @@ import {
   isAllowedWhatsAppTestNumber,
   isWhatsAppTestModeEnabled,
 } from "../lib/whatsappTestSafety";
+import { getEvolutionConfig } from "../lib/evolutionConfig";
 import { sendEvolutionMessage } from "../services/evolutionBot";
 
 const router = Router();
@@ -52,17 +53,17 @@ router.post("/test/whatsapp/send", async (req, res): Promise<void> => {
     return;
   }
 
-  const [settings] = await db.select().from(storeSettingsTable);
-  if (!settings?.evolutionApiUrl || !settings.evolutionApiKey || !settings.evolutionInstance) {
-    res.status(503).json({ error: "Evolution API credentials are not configured" });
+  const evolutionConfig = getEvolutionConfig();
+  if (!evolutionConfig) {
+    res.status(503).json({ error: "Evolution API environment config is not configured" });
     return;
   }
 
   try {
     await sendEvolutionMessage(
-      settings.evolutionApiUrl,
-      settings.evolutionApiKey,
-      settings.evolutionInstance,
+      evolutionConfig.apiUrl,
+      evolutionConfig.apiKey,
+      evolutionConfig.instance,
       to,
       parsed.data.message,
     );

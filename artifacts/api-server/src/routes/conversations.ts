@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { conversationsTable, messagesTable, storeSettingsTable } from "@workspace/db";
+import { conversationsTable, messagesTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { sendEvolutionMessage } from "../services/evolutionBot";
 import { normalizeWhatsAppNumber } from "../lib/whatsappSafety";
 import { logger } from "../lib/logger";
 import { isAdminRequest, isManualWhatsAppSendEnabled } from "../lib/adminSecurity";
+import { getEvolutionConfig } from "../lib/evolutionConfig";
 
 const router = Router();
 type ConversationRow = typeof conversationsTable.$inferSelect;
@@ -68,17 +69,17 @@ router.post("/conversations/:id/send", async (req, res): Promise<void> => {
     return;
   }
 
-  const [settings] = await db.select().from(storeSettingsTable);
-  if (!settings?.evolutionApiUrl || !settings.evolutionApiKey || !settings.evolutionInstance) {
-    res.status(503).json({ error: "Evolution API credentials are not configured" });
+  const evolutionConfig = getEvolutionConfig();
+  if (!evolutionConfig) {
+    res.status(503).json({ error: "Evolution API environment config is not configured" });
     return;
   }
 
   try {
     await sendEvolutionMessage(
-      settings.evolutionApiUrl,
-      settings.evolutionApiKey,
-      settings.evolutionInstance,
+      evolutionConfig.apiUrl,
+      evolutionConfig.apiKey,
+      evolutionConfig.instance,
       to,
       parsed.data.content,
     );
