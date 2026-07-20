@@ -11,6 +11,10 @@ Projeto monorepo para painel administrativo e bot de WhatsApp com integração E
 - Frontend: Vercel
 - Backend: Railway
 
+No projeto da Vercel, configure `VITE_API_BASE_URL` com a URL publica do backend Railway, sem barra no final.
+Exemplo:
+`VITE_API_BASE_URL=https://seu-backend.up.railway.app`
+
 ## Variáveis de ambiente
 Veja o arquivo .env.example
 

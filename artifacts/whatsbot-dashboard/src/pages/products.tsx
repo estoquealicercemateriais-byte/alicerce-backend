@@ -193,7 +193,7 @@ function ImageUploadButton({ onUploaded }: { onUploaded: (url: string) => void }
         headers: { "Content-Type": file.type },
       });
       if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
-      const base = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+      const base = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
       onUploaded(`${base}/api/storage${res.objectPath}`);
     } catch (err) {
       console.error(err);
