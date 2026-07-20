@@ -13,3 +13,11 @@ Projeto monorepo para painel administrativo e bot de WhatsApp com integração E
 
 ## Variáveis de ambiente
 Veja o arquivo .env.example
+
+## Banco de dados Supabase
+Use a URL de conexão do Supabase no campo DATABASE_URL.
+Exemplo:
+postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres
+
+Para criar as tabelas, rode:
+corepack pnpm --filter @workspace/db push
