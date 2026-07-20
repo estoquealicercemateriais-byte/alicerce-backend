@@ -6,7 +6,7 @@ export const conversationsTable = pgTable("conversations", {
   id: serial("id").primaryKey(),
   whatsappNumber: text("whatsapp_number").notNull().unique(),
   customerName: text("customer_name"),
-  status: text("status").notNull().default("bot"), // bot | human | closed
+  status: text("status").notNull().default("human"), // bot | human | closed
   lastMessage: text("last_message"),
   unreadCount: integer("unread_count").notNull().default(0),
   botStep: text("bot_step").default("menu"), // current step in bot flow
