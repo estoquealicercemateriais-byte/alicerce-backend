@@ -3,10 +3,12 @@ import assert from "node:assert/strict";
 import type { Request } from "express";
 import { isAdminRequest, isManualWhatsAppSendEnabled } from "./adminSecurity";
 
-function requestWithHeader(value: string | undefined): Request {
+function requestWithHeader(value: string | undefined, authorization?: string): Request {
   return {
     header(name: string) {
-      return name === "x-admin-api-key" ? value : undefined;
+      if (name === "x-admin-api-key") return value;
+      if (name === "authorization") return authorization;
+      return undefined;
     },
   } as Request;
 }
@@ -37,6 +39,7 @@ test("admin requests require configured API key", () => {
     process.env["ADMIN_API_KEY"] = "secret";
     assert.equal(isAdminRequest(requestWithHeader("wrong")), false);
     assert.equal(isAdminRequest(requestWithHeader("secret")), true);
+    assert.equal(isAdminRequest(requestWithHeader(undefined, "Bearer secret")), true);
   } finally {
     if (previous === undefined) {
       delete process.env["ADMIN_API_KEY"];

@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { ordersTable, orderItemsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
+import { requireAdminRequest } from "../lib/adminSecurity";
 
 const router = Router();
 
@@ -37,7 +38,7 @@ router.get("/orders", async (req, res): Promise<void> => {
   res.json(withItems);
 });
 
-router.post("/orders", async (req, res): Promise<void> => {
+router.post("/orders", requireAdminRequest, async (req, res): Promise<void> => {
   const parsed = orderInputSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { items, ...orderData } = parsed.data;
@@ -63,7 +64,7 @@ router.get("/orders/:id", async (req, res): Promise<void> => {
   res.json(toOrderDto(order, items));
 });
 
-router.put("/orders/:id/status", async (req, res): Promise<void> => {
+router.put("/orders/:id/status", requireAdminRequest, async (req, res): Promise<void> => {
   const id = Number(req.params["id"]);
   const parsed = statusUpdateSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }

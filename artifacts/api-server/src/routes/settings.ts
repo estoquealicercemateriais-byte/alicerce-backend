@@ -4,6 +4,7 @@ import { storeSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getEvolutionConfig } from "../lib/evolutionConfig";
+import { requireAdminRequest } from "../lib/adminSecurity";
 
 const router = Router();
 
@@ -38,7 +39,7 @@ router.get("/settings", async (req, res): Promise<void> => {
   res.json(toSettingsDto(settings));
 });
 
-router.put("/settings", async (req, res): Promise<void> => {
+router.put("/settings", requireAdminRequest, async (req, res): Promise<void> => {
   const parsed = settingsInputSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const existing = await ensureSettings();

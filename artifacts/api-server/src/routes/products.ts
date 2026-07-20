@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { productsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { requireAdminRequest } from "../lib/adminSecurity";
 
 const router = Router();
 
@@ -27,7 +28,7 @@ router.get("/products", async (req, res): Promise<void> => {
   res.json(result.map(toProductDto));
 });
 
-router.post("/products", async (req, res): Promise<void> => {
+router.post("/products", requireAdminRequest, async (req, res): Promise<void> => {
   const parsed = productInputSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -45,7 +46,7 @@ router.get("/products/:id", async (req, res): Promise<void> => {
   res.json(toProductDto(row));
 });
 
-router.put("/products/:id", async (req, res): Promise<void> => {
+router.put("/products/:id", requireAdminRequest, async (req, res): Promise<void> => {
   const id = Number(req.params["id"]);
   const parsed = productInputSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
@@ -55,7 +56,7 @@ router.put("/products/:id", async (req, res): Promise<void> => {
   res.json(toProductDto(row));
 });
 
-router.delete("/products/:id", async (req, res): Promise<void> => {
+router.delete("/products/:id", requireAdminRequest, async (req, res): Promise<void> => {
   const id = Number(req.params["id"]);
   await db.delete(productsTable).where(eq(productsTable.id, id));
   res.status(204).send();

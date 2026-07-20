@@ -6,7 +6,7 @@ import { z } from "zod";
 import { sendEvolutionMessage } from "../services/evolutionBot";
 import { normalizeWhatsAppNumber } from "../lib/whatsappSafety";
 import { logger } from "../lib/logger";
-import { isAdminRequest, isManualWhatsAppSendEnabled } from "../lib/adminSecurity";
+import { isAdminRequest, isManualWhatsAppSendEnabled, requireAdminRequest } from "../lib/adminSecurity";
 import { getEvolutionConfig } from "../lib/evolutionConfig";
 
 const router = Router();
@@ -104,7 +104,7 @@ router.post("/conversations/:id/send", async (req, res): Promise<void> => {
   res.json(toMessageDto(msg));
 });
 
-router.put("/conversations/:id/status", async (req, res): Promise<void> => {
+router.put("/conversations/:id/status", requireAdminRequest, async (req, res): Promise<void> => {
   const id = Number(req.params["id"]);
   const parsed = statusUpdateSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
@@ -117,7 +117,7 @@ router.put("/conversations/:id/status", async (req, res): Promise<void> => {
   res.json(toConversationDto(row));
 });
 
-router.put("/conversations/:id/read", async (req, res): Promise<void> => {
+router.put("/conversations/:id/read", requireAdminRequest, async (req, res): Promise<void> => {
   const id = Number(req.params["id"]);
   const [row] = await db
     .update(conversationsTable)

@@ -10,7 +10,9 @@ import {
   Settings,
   Menu,
   X,
+  Shield,
 } from "lucide-react";
+import { clearAdminApiKey, getAdminApiKey, setAdminApiKey } from "@/lib/adminAuth";
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -119,6 +121,22 @@ export function Topbar({
 }: {
   setMobileOpen: (open: boolean) => void;
 }) {
+  const [hasAdminKey, setHasAdminKey] = React.useState(() => Boolean(getAdminApiKey()));
+
+  const handleAdminKeyClick = () => {
+    if (hasAdminKey) {
+      clearAdminApiKey();
+      setHasAdminKey(false);
+      return;
+    }
+
+    const value = window.prompt("Informe a chave administrativa do backend");
+    if (value) {
+      setAdminApiKey(value);
+      setHasAdminKey(Boolean(getAdminApiKey()));
+    }
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-6 shadow-sm">
       <button
@@ -128,6 +146,20 @@ export function Topbar({
         <Menu className="h-5 w-5" />
       </button>
       <div className="ml-auto flex items-center gap-4">
+        <button
+          type="button"
+          onClick={handleAdminKeyClick}
+          className={cn(
+            "inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors",
+            hasAdminKey
+              ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+              : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100",
+          )}
+          title={hasAdminKey ? "Remover chave administrativa" : "Configurar chave administrativa"}
+        >
+          <Shield className="h-4 w-4" />
+          Chave admin
+        </button>
         <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full border">
           <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
           Sistema Operacional

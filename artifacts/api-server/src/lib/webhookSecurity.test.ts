@@ -14,9 +14,15 @@ function requestWithSecret(headerValue: string | undefined, queryValue?: string)
 
 test("webhook is open only when no secret is configured", () => {
   const previous = process.env["EVOLUTION_WEBHOOK_SECRET"];
+  const previousRailway = process.env["RAILWAY_ENVIRONMENT"];
   try {
     delete process.env["EVOLUTION_WEBHOOK_SECRET"];
+    delete process.env["RAILWAY_ENVIRONMENT"];
     assert.equal(isWebhookRequestAllowed(requestWithSecret(undefined)), true);
+
+    process.env["RAILWAY_ENVIRONMENT"] = "production";
+    assert.equal(isWebhookRequestAllowed(requestWithSecret(undefined)), false);
+    delete process.env["RAILWAY_ENVIRONMENT"];
 
     process.env["EVOLUTION_WEBHOOK_SECRET"] = "secret";
     assert.equal(isWebhookRequestAllowed(requestWithSecret(undefined)), false);
@@ -28,6 +34,11 @@ test("webhook is open only when no secret is configured", () => {
       delete process.env["EVOLUTION_WEBHOOK_SECRET"];
     } else {
       process.env["EVOLUTION_WEBHOOK_SECRET"] = previous;
+    }
+    if (previousRailway === undefined) {
+      delete process.env["RAILWAY_ENVIRONMENT"];
+    } else {
+      process.env["RAILWAY_ENVIRONMENT"] = previousRailway;
     }
   }
 });

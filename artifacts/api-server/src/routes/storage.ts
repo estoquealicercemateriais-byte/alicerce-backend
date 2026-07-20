@@ -10,6 +10,7 @@ import {
   ObjectNotFoundError,
   ObjectStorageService,
 } from '../lib/objectStorage';
+import { requireAdminRequest } from '../lib/adminSecurity';
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -37,6 +38,7 @@ function hasAuthenticatedSession(
  */
 router.post(
   '/storage/uploads/request-url',
+  requireAdminRequest,
   async (req: Request, res: Response) => {
     const parsed = RequestUploadUrlBody.safeParse(req.body);
     if (!parsed.success) {

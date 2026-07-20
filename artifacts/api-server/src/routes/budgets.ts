@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { budgetRequestsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
+import { requireAdminRequest } from "../lib/adminSecurity";
 
 const router = Router();
 
@@ -18,7 +19,7 @@ router.get("/budget-requests", async (req, res): Promise<void> => {
   res.json(filtered.map(toBudgetDto));
 });
 
-router.put("/budget-requests/:id", async (req, res): Promise<void> => {
+router.put("/budget-requests/:id", requireAdminRequest, async (req, res): Promise<void> => {
   const id = Number(req.params["id"]);
   const parsed = budgetUpdateSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
