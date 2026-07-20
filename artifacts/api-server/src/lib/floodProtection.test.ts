@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { FloodProtection, createMessageFingerprint } from "./floodProtection.ts";
+import { FloodProtection, createMessageFingerprint } from "./floodProtection";
 
 test("deduplicates repeated messages within cooldown", () => {
   const protection = new FloodProtection({ cooldownMs: 2000, maxMessagesPerMinute: 5 });
