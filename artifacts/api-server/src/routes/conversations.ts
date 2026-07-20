@@ -9,6 +9,7 @@ import { logger } from "../lib/logger";
 import { isAdminRequest, isManualWhatsAppSendEnabled } from "../lib/adminSecurity";
 
 const router = Router();
+type ConversationRow = typeof conversationsTable.$inferSelect;
 
 const statusUpdateSchema = z.object({
   status: z.enum(["bot", "human", "closed"]),
@@ -24,7 +25,7 @@ router.get("/conversations", async (req, res): Promise<void> => {
     .select()
     .from(conversationsTable)
     .orderBy(desc(conversationsTable.updatedAt));
-  if (status) rows = rows.filter((c) => c.status === status);
+  if (status) rows = rows.filter((c: ConversationRow) => c.status === status);
   res.json(rows.map(toConversationDto));
 });
 

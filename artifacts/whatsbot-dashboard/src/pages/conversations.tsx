@@ -24,6 +24,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import {
+  Conversation,
   ConversationStatus,
   MessageDirection,
 } from "@workspace/api-client-react";
@@ -45,7 +46,7 @@ export default function ConversationsPage() {
   );
 
   const filteredConversations = conversations?.filter(
-    (c) =>
+    (c: Conversation) =>
       search === "" ||
       c.customerName?.toLowerCase().includes(search.toLowerCase()) ||
       c.whatsappNumber.includes(search),

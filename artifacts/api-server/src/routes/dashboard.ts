@@ -4,6 +4,7 @@ import { conversationsTable, productsTable, ordersTable, budgetRequestsTable } f
 import { eq, desc } from "drizzle-orm";
 
 const router = Router();
+type ConversationRow = typeof conversationsTable.$inferSelect;
 
 router.get("/dashboard", async (req, res): Promise<void> => {
   const [conversations, products, orders, budgets] = await Promise.all([
@@ -21,12 +22,12 @@ router.get("/dashboard", async (req, res): Promise<void> => {
 
   res.json({
     totalConversations: conversations.length,
-    activeBot: conversations.filter((c) => c.status === "bot").length,
-    awaitingHuman: conversations.filter((c) => c.status === "human").length,
+    activeBot: conversations.filter((c: ConversationRow) => c.status === "bot").length,
+    awaitingHuman: conversations.filter((c: ConversationRow) => c.status === "human").length,
     totalProducts: products.length,
     pendingOrders: orders.filter((o) => o.status === "pending").length,
     pendingBudgets: budgets.filter((b) => b.status === "pending").length,
-    recentConversations: recentConversations.map((c) => ({
+    recentConversations: recentConversations.map((c: ConversationRow) => ({
       id: c.id,
       whatsappNumber: c.whatsappNumber,
       customerName: c.customerName ?? null,

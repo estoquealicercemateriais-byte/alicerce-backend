@@ -344,7 +344,7 @@ function ProductFormDialog({ product }: { product?: any }) {
                 </Label>
                 <Switch
                   checked={formData.inStock}
-                  onCheckedChange={(c) =>
+                  onCheckedChange={(c: boolean) =>
                     setFormData({ ...formData, inStock: c })
                   }
                 />
@@ -416,7 +416,7 @@ function ProductFormDialog({ product }: { product?: any }) {
               </div>
               <Switch
                 checked={formData.isOffer}
-                onCheckedChange={(c) => setFormData({ ...formData, isOffer: c })}
+                onCheckedChange={(c: boolean) => setFormData({ ...formData, isOffer: c })}
               />
             </div>
           </div>
