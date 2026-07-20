@@ -4,6 +4,9 @@ import { conversationsTable, messagesTable, storeSettingsTable } from "@workspac
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { sendEvolutionMessage } from "../services/evolutionBot";
+import { normalizeWhatsAppNumber } from "../lib/whatsappSafety";
+import { logger } from "../lib/logger";
+import { isAdminRequest, isManualWhatsAppSendEnabled } from "../lib/adminSecurity";
 
 const router = Router();
 
@@ -45,10 +48,45 @@ router.post("/conversations/:id/send", async (req, res): Promise<void> => {
   const parsed = messageInputSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
+  if (!isManualWhatsAppSendEnabled()) {
+    res.status(403).json({ error: "Manual WhatsApp sending is disabled" });
+    return;
+  }
+
+  if (!isAdminRequest(req)) {
+    res.status(401).json({ error: "Admin API key is required" });
+    return;
+  }
+
   const [convo] = await db.select().from(conversationsTable).where(eq(conversationsTable.id, id));
   if (!convo) { res.status(404).json({ error: "Not found" }); return; }
 
-  // Save outbound message
+  const to = normalizeWhatsAppNumber(convo.whatsappNumber);
+  if (!to) {
+    res.status(400).json({ error: "Invalid WhatsApp number for this conversation" });
+    return;
+  }
+
+  const [settings] = await db.select().from(storeSettingsTable);
+  if (!settings?.evolutionApiUrl || !settings.evolutionApiKey || !settings.evolutionInstance) {
+    res.status(503).json({ error: "Evolution API credentials are not configured" });
+    return;
+  }
+
+  try {
+    await sendEvolutionMessage(
+      settings.evolutionApiUrl,
+      settings.evolutionApiKey,
+      settings.evolutionInstance,
+      to,
+      parsed.data.content,
+    );
+  } catch (err) {
+    logger.warn({ err, conversationId: id }, "Manual WhatsApp send failed");
+    res.status(502).json({ error: "Failed to deliver message through Evolution API" });
+    return;
+  }
+
   const [msg] = await db.insert(messagesTable).values({
     conversationId: id,
     content: parsed.data.content,
@@ -60,18 +98,6 @@ router.post("/conversations/:id/send", async (req, res): Promise<void> => {
   await db.update(conversationsTable)
     .set({ lastMessage: parsed.data.content, updatedAt: new Date() })
     .where(eq(conversationsTable.id, id));
-
-  // Try to send via Evolution API (non-blocking)
-  const [settings] = await db.select().from(storeSettingsTable);
-  if (settings?.evolutionApiUrl && settings?.evolutionApiKey && settings?.evolutionInstance) {
-    sendEvolutionMessage(
-      settings.evolutionApiUrl,
-      settings.evolutionApiKey,
-      settings.evolutionInstance,
-      convo.whatsappNumber,
-      parsed.data.content,
-    ).catch(() => {});
-  }
 
   res.json(toMessageDto(msg));
 });

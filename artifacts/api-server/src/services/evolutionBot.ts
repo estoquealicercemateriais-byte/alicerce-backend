@@ -9,6 +9,13 @@ import {
 import { eq, desc, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { FloodProtection, createMessageFingerprint } from "../lib/floodProtection";
+import {
+  isAutoReplyEnabled,
+  isBotOptInMessage,
+  isBotOptOutMessage,
+  maxAutomatedOffersPerRequest,
+  parseDirectRemoteJid,
+} from "../lib/whatsappSafety";
 
 const inboundFloodProtection = new FloodProtection({
   cooldownMs: 3_000,
@@ -16,8 +23,8 @@ const inboundFloodProtection = new FloodProtection({
 });
 
 const outboundFloodProtection = new FloodProtection({
-  cooldownMs: 1_500,
-  maxMessagesPerMinute: 10,
+  cooldownMs: 10_000,
+  maxMessagesPerMinute: 3,
 });
 
 export async function sendEvolutionMessage(
@@ -30,7 +37,7 @@ export async function sendEvolutionMessage(
   const outboundFingerprint = createMessageFingerprint(to, undefined, text);
   if (!outboundFloodProtection.shouldProcess(outboundFingerprint)) {
     logger.info({ to, fingerprint: outboundFingerprint }, "Skipping outbound message due to flood protection");
-    return;
+    throw new Error("Outbound message blocked by flood protection");
   }
 
   const url = `${apiUrl.replace(/\/$/, "")}/message/sendText/${instance}`;
@@ -65,7 +72,7 @@ export async function sendEvolutionMedia(
   const outboundFingerprint = createMessageFingerprint(to, mediaUrl, caption);
   if (!outboundFloodProtection.shouldProcess(outboundFingerprint)) {
     logger.info({ to, fingerprint: outboundFingerprint }, "Skipping outbound media message due to flood protection");
-    return;
+    throw new Error("Outbound media message blocked by flood protection");
   }
 
   const url = `${apiUrl.replace(/\/$/, "")}/message/sendMedia/${instance}`;
@@ -112,9 +119,12 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
     const remoteJid = key["remoteJid"] as string | undefined;
     if (!remoteJid) return;
 
-    // Extract phone number (remove @s.whatsapp.net or @g.us)
-    const phoneNumber = remoteJid.split("@")[0];
-    if (!phoneNumber) return;
+    const parsedJid = parseDirectRemoteJid(remoteJid);
+    if (!parsedJid) {
+      logger.info({ remoteJid }, "Ignoring non-direct WhatsApp webhook message");
+      return;
+    }
+    const { phoneNumber } = parsedJid;
 
     // Extract text content
     const conversation2 = message["conversation"] as string | undefined;
@@ -129,6 +139,9 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
       return;
     }
 
+    const autoReplyEnabled = isAutoReplyEnabled();
+    const explicitOptIn = isBotOptInMessage(text);
+
     // Get or create conversation
     let [convo] = await db
       .select()
@@ -141,7 +154,7 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
         .values({
           whatsappNumber: phoneNumber,
           customerName: pushName ?? null,
-          status: "bot",
+          status: autoReplyEnabled && explicitOptIn ? "bot" : "human",
           botStep: "menu",
         })
         .returning();
@@ -171,6 +184,29 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
       })
       .where(eq(conversationsTable.id, convo.id));
 
+    if (isBotOptOutMessage(text)) {
+      await db
+        .update(conversationsTable)
+        .set({ status: "closed", botStep: "menu", updatedAt: new Date() })
+        .where(eq(conversationsTable.id, convo.id));
+      logger.info({ phoneNumber }, "Conversation closed by opt-out command");
+      return;
+    }
+
+    if (!autoReplyEnabled) {
+      logger.info({ phoneNumber }, "Automatic WhatsApp replies disabled");
+      return;
+    }
+
+    if (explicitOptIn && convo.status !== "bot") {
+      const [updated] = await db
+        .update(conversationsTable)
+        .set({ status: "bot", botStep: "menu", updatedAt: new Date() })
+        .where(eq(conversationsTable.id, convo.id))
+        .returning();
+      if (updated) convo = updated;
+    }
+
     // Only process bot logic if in bot mode
     if (convo.status !== "bot") return;
 
@@ -180,25 +216,13 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
     const configuredKey = settings?.evolutionApiKey?.trim() || "";
     const configuredInstance = settings?.evolutionInstance?.trim() || "";
 
-    if (!configuredUrl) return;
     if (!configuredKey || !configuredInstance) {
       logger.warn({ phoneNumber, configuredUrl, configuredInstance: !!configuredInstance }, "Evolution API credentials missing; skipping outbound delivery");
+      return;
     }
 
     const reply = await getBotReply(convo, text.trim(), settings);
     if (!reply) return;
-
-    // Save outbound message
-    await db.insert(messagesTable).values({
-      conversationId: convo.id,
-      content: reply,
-      direction: "outbound",
-      messageType: "text",
-    });
-    await db
-      .update(conversationsTable)
-      .set({ lastMessage: reply, updatedAt: new Date() })
-      .where(eq(conversationsTable.id, convo.id));
 
     try {
       await sendEvolutionMessage(
@@ -208,8 +232,19 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
         phoneNumber,
         reply,
       );
+      await db.insert(messagesTable).values({
+        conversationId: convo.id,
+        content: reply,
+        direction: "outbound",
+        messageType: "text",
+      });
+      await db
+        .update(conversationsTable)
+        .set({ lastMessage: reply, updatedAt: new Date() })
+        .where(eq(conversationsTable.id, convo.id));
     } catch (err) {
-      logger.warn({ err, phoneNumber }, "Failed to send text reply; continuing with post-reply media");
+      logger.warn({ err, phoneNumber }, "Failed to send text reply; skipping post-reply media");
+      return;
     }
 
     // Reload conversation so post-reply steps use the updated botStep
@@ -259,7 +294,7 @@ async function sendActiveOffers(
     .from(productsTable)
     .where(and(eq(productsTable.isOffer, true), eq(productsTable.inStock, true)))
     .orderBy(desc(productsTable.createdAt))
-    .limit(5);
+    .limit(maxAutomatedOffersPerRequest());
 
   if (offers.length === 0) return;
 
