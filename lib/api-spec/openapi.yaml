@@ -472,7 +472,7 @@ components:
 
     Product:
       type: object
-      required: [id, name, category, price, unit, inStock, createdAt]
+      required: [id, name, category, price, unit, inStock, isOffer, createdAt]
       properties:
         id:
           type: integer
@@ -486,6 +486,10 @@ components:
           type: string
         description:
           type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+        isOffer:
+          type: boolean
         inStock:
           type: boolean
         createdAt:
@@ -506,6 +510,10 @@ components:
           type: string
         description:
           type: string
+        imageUrl:
+          type: string
+        isOffer:
+          type: boolean
         inStock:
           type: boolean
 

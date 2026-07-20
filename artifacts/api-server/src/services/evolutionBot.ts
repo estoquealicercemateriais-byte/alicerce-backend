@@ -6,7 +6,7 @@ import {
   budgetRequestsTable,
   storeSettingsTable,
 } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 export async function sendEvolutionMessage(
@@ -31,6 +31,38 @@ export async function sendEvolutionMessage(
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     logger.warn({ status: response.status, body, to, url }, "Failed to send Evolution message");
+    throw new Error(`Evolution API error: ${response.status} ${body}`);
+  }
+}
+
+export async function sendEvolutionMedia(
+  apiUrl: string,
+  apiKey: string,
+  instance: string,
+  to: string,
+  mediaUrl: string,
+  caption: string,
+  mediaType: "image" | "video" | "document" = "image",
+  fileName?: string,
+): Promise<void> {
+  const url = `${apiUrl.replace(/\/$/, "")}/message/sendMedia/${instance}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: apiKey,
+    },
+    body: JSON.stringify({
+      number: to,
+      mediatype: mediaType,
+      media: mediaUrl,
+      caption,
+      fileName: fileName || "file",
+    }),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    logger.warn({ status: response.status, body, to, url }, "Failed to send Evolution media");
     throw new Error(`Evolution API error: ${response.status} ${body}`);
   }
 }
@@ -138,8 +170,64 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
       phoneNumber,
       reply,
     );
+
+    // If user asked for products/offers, send active offers with images
+    if (convo.botStep === "catalog" || text.trim().toLowerCase() === "1") {
+      await sendActiveOffers(
+        settings.evolutionApiUrl,
+        settings.evolutionApiKey,
+        settings.evolutionInstance,
+        phoneNumber,
+        convo.id,
+      );
+    }
   } catch (err) {
     logger.error({ err }, "Error handling incoming message");
+  }
+}
+
+async function sendActiveOffers(
+  apiUrl: string,
+  apiKey: string,
+  instance: string,
+  to: string,
+  conversationId: number,
+): Promise<void> {
+  const offers = await db
+    .select()
+    .from(productsTable)
+    .where(and(eq(productsTable.isOffer, true), eq(productsTable.inStock, true)))
+    .orderBy(desc(productsTable.createdAt))
+    .limit(5);
+
+  if (offers.length === 0) return;
+
+  for (const offer of offers) {
+    const caption = `*${offer.name}*\n${offer.description ? offer.description + "\n" : ""}💰 *R$ ${parseFloat(String(offer.price)).toFixed(2)}* / ${offer.unit}\n\nDigite *menu* para voltar ou *2* para solicitar orçamento.`;
+
+    if (offer.imageUrl) {
+      try {
+        await sendEvolutionMedia(apiUrl, apiKey, instance, to, offer.imageUrl, caption, "image");
+        await db.insert(messagesTable).values({
+          conversationId,
+          content: `[Oferta] ${offer.name} - R$ ${parseFloat(String(offer.price)).toFixed(2)}`,
+          direction: "outbound",
+          messageType: "image",
+        });
+      } catch (err) {
+        logger.warn({ err, offer: offer.id }, "Failed to send offer image; falling back to text");
+        // Fallback to text message
+        await sendEvolutionMessage(apiUrl, apiKey, instance, to, caption);
+      }
+    } else {
+      await sendEvolutionMessage(apiUrl, apiKey, instance, to, caption);
+      await db.insert(messagesTable).values({
+        conversationId,
+        content: `[Oferta] ${offer.name} - R$ ${parseFloat(String(offer.price)).toFixed(2)}`,
+        direction: "outbound",
+        messageType: "text",
+      });
+    }
   }
 }
 
@@ -242,20 +330,16 @@ function buildMenuMessage(settings: typeof storeSettingsTable.$inferSelect): str
 }
 
 async function buildCatalogMessage(): Promise<string> {
-  const products = await db
+  const offers = await db
     .select()
     .from(productsTable)
-    .where(eq(productsTable.inStock, true))
-    .limit(10);
+    .where(and(eq(productsTable.isOffer, true), eq(productsTable.inStock, true)));
 
-  if (products.length === 0) {
-    return "No momento não temos produtos cadastrados. Entre em contato com nossa equipe para mais informações.\n\nDigite *menu* para voltar.";
+  if (offers.length === 0) {
+    return "No momento não temos ofertas ativas. Entre em contato com nossa equipe para mais informações.\n\nDigite *menu* para voltar.";
   }
 
-  const lines = products.map(
-    (p) => `• *${p.name}* (${p.category})\n  R$ ${parseFloat(String(p.price)).toFixed(2)} / ${p.unit}`,
-  );
-  return `*Nossos Produtos Disponíveis:*\n\n${lines.join("\n\n")}\n\nDigite *menu* para voltar ou *2* para solicitar um orçamento.`;
+  return `*Confira nossas ofertas especiais!* 🏗️\n\nEm breve enviarei as imagens e preços dos produtos em promoção.\n\nDigite *menu* para voltar ou *2* para solicitar um orçamento.`;
 }
 
 function buildStoreInfoMessage(settings: typeof storeSettingsTable.$inferSelect): string {

@@ -1,7 +1,6 @@
 import * as React from "react";
 
 import { Toast, ToastActionElement, ToastProps } from "@/components/ui/toast";
-import { useToast } from "@/components/ui/use-toast";
 import { Toaster as RadixToaster } from "@/components/ui/toaster";
 
 const TOAST_LIMIT = 1;

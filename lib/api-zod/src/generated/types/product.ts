@@ -14,6 +14,9 @@ export interface Product {
   unit: string;
   /** @nullable */
   description?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  isOffer: boolean;
   inStock: boolean;
   createdAt: Date;
 }

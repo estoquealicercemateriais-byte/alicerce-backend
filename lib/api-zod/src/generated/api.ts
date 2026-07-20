@@ -54,6 +54,8 @@ export const ListProductsResponseItem = zod.object({
   "price": zod.number(),
   "unit": zod.string(),
   "description": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "isOffer": zod.boolean(),
   "inStock": zod.boolean(),
   "createdAt": zod.coerce.date()
 })
@@ -69,6 +71,8 @@ export const CreateProductBody = zod.object({
   "price": zod.number(),
   "unit": zod.string(),
   "description": zod.string().optional(),
+  "imageUrl": zod.string().optional(),
+  "isOffer": zod.boolean().optional(),
   "inStock": zod.boolean().optional()
 })
 
@@ -79,6 +83,8 @@ export const CreateProductResponse = zod.object({
   "price": zod.number(),
   "unit": zod.string(),
   "description": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "isOffer": zod.boolean(),
   "inStock": zod.boolean(),
   "createdAt": zod.coerce.date()
 })
@@ -98,6 +104,8 @@ export const GetProductResponse = zod.object({
   "price": zod.number(),
   "unit": zod.string(),
   "description": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "isOffer": zod.boolean(),
   "inStock": zod.boolean(),
   "createdAt": zod.coerce.date()
 })
@@ -116,6 +124,8 @@ export const UpdateProductBody = zod.object({
   "price": zod.number(),
   "unit": zod.string(),
   "description": zod.string().optional(),
+  "imageUrl": zod.string().optional(),
+  "isOffer": zod.boolean().optional(),
   "inStock": zod.boolean().optional()
 })
 
@@ -126,6 +136,8 @@ export const UpdateProductResponse = zod.object({
   "price": zod.number(),
   "unit": zod.string(),
   "description": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "isOffer": zod.boolean(),
   "inStock": zod.boolean(),
   "createdAt": zod.coerce.date()
 })

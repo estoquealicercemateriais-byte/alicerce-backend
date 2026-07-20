@@ -49,6 +49,9 @@ export interface Product {
   unit: string;
   /** @nullable */
   description?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  isOffer: boolean;
   inStock: boolean;
   createdAt: string;
 }
@@ -59,6 +62,8 @@ export interface ProductInput {
   price: number;
   unit: string;
   description?: string;
+  imageUrl?: string;
+  isOffer?: boolean;
   inStock?: boolean;
 }
 

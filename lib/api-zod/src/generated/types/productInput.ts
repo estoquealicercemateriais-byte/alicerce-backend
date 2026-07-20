@@ -12,5 +12,7 @@ export interface ProductInput {
   price: number;
   unit: string;
   description?: string;
+  imageUrl?: string;
+  isOffer?: boolean;
   inStock?: boolean;
 }

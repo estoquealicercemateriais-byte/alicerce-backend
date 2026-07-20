@@ -12,6 +12,8 @@ const productInputSchema = z.object({
   price: z.number().positive(),
   unit: z.string().min(1),
   description: z.string().optional(),
+  imageUrl: z.string().url().optional().nullable(),
+  isOffer: z.boolean().optional().default(false),
   inStock: z.boolean().optional().default(true),
 });
 
@@ -67,6 +69,8 @@ function toProductDto(row: typeof productsTable.$inferSelect) {
     price: parseFloat(String(row.price)),
     unit: row.unit,
     description: row.description ?? null,
+    imageUrl: row.imageUrl ?? null,
+    isOffer: row.isOffer,
     inStock: row.inStock,
     createdAt: row.createdAt.toISOString(),
   };

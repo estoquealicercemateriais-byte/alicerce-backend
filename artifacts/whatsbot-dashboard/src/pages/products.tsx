@@ -27,8 +27,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/format";
-import { Search, Plus, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, ImageIcon, Tag } from "lucide-react";
 
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
@@ -75,6 +76,7 @@ export default function ProductsPage() {
               <TableHead>Categoria</TableHead>
               <TableHead className="text-right">Preço</TableHead>
               <TableHead className="text-center">Unidade</TableHead>
+              <TableHead className="text-center">Oferta</TableHead>
               <TableHead className="text-center">Estoque</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -83,7 +85,7 @@ export default function ProductsPage() {
             {isLoading ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="text-center p-8 text-muted-foreground"
                 >
                   Carregando catálogo...
@@ -92,7 +94,7 @@ export default function ProductsPage() {
             ) : filteredProducts?.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="text-center p-8 text-muted-foreground"
                 >
                   Nenhum produto encontrado.
@@ -104,7 +106,19 @@ export default function ProductsPage() {
                   <TableCell className="font-mono text-xs text-muted-foreground">
                     {product.id.toString().padStart(4, "0")}
                   </TableCell>
-                  <TableCell className="font-medium">{product.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {product.imageUrl && (
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {product.name}
+                      {product.isOffer && (
+                        <Badge variant="default" className="bg-primary text-xs">
+                          <Tag className="h-3 w-3 mr-1" /> OFERTA
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <span className="bg-muted text-muted-foreground px-2 py-1 rounded text-xs font-semibold uppercase">
                       {product.category}
@@ -115,6 +129,13 @@ export default function ProductsPage() {
                   </TableCell>
                   <TableCell className="text-center font-mono text-sm">
                     {product.unit}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {product.isOffer ? (
+                      <Badge variant="default" className="bg-primary">Oferta</Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-center">
                     {product.inStock ? (
@@ -152,6 +173,8 @@ function ProductFormDialog({ product }: { product?: any }) {
     price: product?.price?.toString() || "",
     unit: product?.unit || "un",
     description: product?.description || "",
+    imageUrl: product?.imageUrl || "",
+    isOffer: product?.isOffer ?? false,
     inStock: product?.inStock ?? true,
   });
 
@@ -163,6 +186,7 @@ function ProductFormDialog({ product }: { product?: any }) {
     e.preventDefault();
     const payload = {
       ...formData,
+      imageUrl: formData.imageUrl.trim() || undefined,
       price: parseFloat(formData.price.replace(",", ".")) || 0,
     };
 
@@ -193,6 +217,8 @@ function ProductFormDialog({ product }: { product?: any }) {
               price: "",
               unit: "un",
               description: "",
+              imageUrl: "",
+              isOffer: false,
               inStock: true,
             });
           },
@@ -293,6 +319,36 @@ function ProductFormDialog({ product }: { product?: any }) {
                   setFormData({ ...formData, description: e.target.value })
                 }
                 placeholder="Detalhes que o bot pode usar para responder clientes..."
+              />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>URL da Imagem da Oferta</Label>
+              <Input
+                value={formData.imageUrl}
+                onChange={(e) =>
+                  setFormData({ ...formData, imageUrl: e.target.value })
+                }
+                placeholder="https://exemplo.com/imagem-produto.jpg"
+              />
+              {formData.imageUrl && (
+                <img
+                  src={formData.imageUrl}
+                  alt="Preview"
+                  className="mt-2 h-24 w-24 object-cover rounded border"
+                  onError={(e) => (e.currentTarget.style.display = "none")}
+                />
+              )}
+            </div>
+            <div className="space-y-2 col-span-2 flex items-center justify-between border rounded-md p-3">
+              <div>
+                <Label className="cursor-pointer font-medium">Marcar como Oferta</Label>
+                <p className="text-xs text-muted-foreground">
+                  Ofertas aparecem no catálogo do bot com imagem e preço.
+                </p>
+              </div>
+              <Switch
+                checked={formData.isOffer}
+                onCheckedChange={(c) => setFormData({ ...formData, isOffer: c })}
               />
             </div>
           </div>
