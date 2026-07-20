@@ -1,0 +1,5 @@
+- [Evolution bot keyword matching](evolution-bot-keywords.md) — score whole-word name matches higher to avoid substring false positives like "fibrocimento" for "cimento".
+- [Object storage upload route](object-storage-upload-route.md) — objectPath already includes `/objects/`, so dashboard URLs are `${base}/api/storage${objectPath}` (no extra `/objects`).
+- [Conversation state reload](conversation-state-reload.md) — reload the conversation row after `getBotReply` so post-reply media steps see the updated `botStep`.
+- [Dashboard table scroll](dashboard-table-scroll.md) — wrap tables in `overflow-x-auto` and add `min-h-0` to flex containers so mouse scrolling works off-screen content.
+- [Vite build env vars](vite-build-env-vars.md) — `whatsbot-dashboard` build requires `PORT` and `BASE_PATH` because vite.config.ts throws if either is missing.

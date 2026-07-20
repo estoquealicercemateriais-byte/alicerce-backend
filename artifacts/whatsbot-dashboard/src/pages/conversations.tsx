@@ -52,10 +52,10 @@ export default function ConversationsPage() {
   );
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full min-h-0 overflow-hidden">
       {/* List Sidebar */}
       <div
-        className={`w-full md:w-80 lg:w-96 flex flex-col border-r bg-background ${selectedId ? "hidden md:flex" : "flex"}`}
+        className={`w-full md:w-80 lg:w-96 flex flex-col min-h-0 border-r bg-background ${selectedId ? "hidden md:flex" : "flex"}`}
       >
         <div className="p-4 border-b space-y-4">
           <h2 className="text-xl font-bold">Conversas</h2>
@@ -165,7 +165,7 @@ export default function ConversationsPage() {
 
       {/* Detail Pane */}
       <div
-        className={`flex-1 bg-muted/10 flex flex-col ${!selectedId ? "hidden md:flex" : "flex"}`}
+        className={`flex-1 min-h-0 bg-muted/10 flex flex-col ${!selectedId ? "hidden md:flex" : "flex"}`}
       >
         {selectedId ? (
           <ConversationDetail

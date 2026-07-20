@@ -143,9 +143,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
       <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
         <Topbar setMobileOpen={setMobileOpen} />
-        <main className="flex-1 overflow-auto bg-muted/20">{children}</main>
+        <main className="flex-1 min-h-0 overflow-auto bg-muted/20">{children}</main>
       </div>
     </div>
   );

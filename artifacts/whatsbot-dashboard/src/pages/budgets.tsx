@@ -78,7 +78,8 @@ export default function BudgetsPage() {
       </div>
 
       <div className="bg-card border rounded-lg shadow-sm overflow-hidden">
-        <Table>
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="w-[100px]">ID</TableHead>
@@ -139,6 +140,7 @@ export default function BudgetsPage() {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
     </div>
   );

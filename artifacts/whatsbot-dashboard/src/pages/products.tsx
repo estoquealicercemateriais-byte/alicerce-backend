@@ -4,8 +4,11 @@ import {
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
+  useRequestUploadUrl,
   getListProductsQueryKey,
 } from "@workspace/api-client-react";
+import { ObjectUploader } from "@workspace/object-storage-web";
+import type { UppyFile } from "@uppy/core";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Table,
@@ -55,7 +58,7 @@ export default function ProductsPage() {
         <ProductFormDialog />
       </div>
 
-      <div className="bg-card border rounded-lg shadow-sm flex flex-col">
+      <div className="bg-card border rounded-lg shadow-sm flex flex-col overflow-hidden">
         <div className="p-4 border-b flex gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -68,7 +71,8 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        <Table>
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
               <TableHead className="w-[100px]">Cod.</TableHead>
@@ -158,8 +162,45 @@ export default function ProductsPage() {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
     </div>
+  );
+}
+
+function ImageUploadButton({ onUploaded }: { onUploaded: (url: string) => void }) {
+  const requestUpload = useRequestUploadUrl();
+
+  return (
+    <ObjectUploader
+      maxNumberOfFiles={1}
+      maxFileSize={5 * 1024 * 1024}
+      buttonClassName="px-3 py-2 border rounded-md text-sm font-medium hover:bg-muted transition-colors"
+      onGetUploadParameters={async (file: UppyFile<Record<string, unknown>, Record<string, unknown>>) => {
+        const res = await requestUpload.mutateAsync({
+          data: {
+            name: file.name,
+            size: file.size ?? 0,
+            contentType: file.type,
+          },
+        });
+        return {
+          method: "PUT" as const,
+          url: res.uploadURL,
+          headers: { "Content-Type": file.type },
+        };
+      }}
+      onComplete={(result: { successful?: Array<{ response?: { body?: { objectPath?: string } } }> }) => {
+        const uploaded = result.successful?.[0];
+        if (uploaded?.response?.body?.objectPath) {
+          const objectPath = uploaded.response.body.objectPath;
+          const base = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+          onUploaded(`${base}/api/storage${objectPath}`);
+        }
+      }}
+    >
+      Upload
+    </ObjectUploader>
   );
 }
 
@@ -322,14 +363,19 @@ function ProductFormDialog({ product }: { product?: any }) {
               />
             </div>
             <div className="space-y-2 col-span-2">
-              <Label>URL da Imagem da Oferta</Label>
-              <Input
-                value={formData.imageUrl}
-                onChange={(e) =>
-                  setFormData({ ...formData, imageUrl: e.target.value })
-                }
-                placeholder="https://exemplo.com/imagem-produto.jpg"
-              />
+              <Label>Imagem do Produto</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  value={formData.imageUrl}
+                  onChange={(e) =>
+                    setFormData({ ...formData, imageUrl: e.target.value })
+                  }
+                  placeholder="URL da imagem ou faça upload"
+                />
+                <ImageUploadButton
+                  onUploaded={(url) => setFormData({ ...formData, imageUrl: url })}
+                />
+              </div>
               {formData.imageUrl && (
                 <img
                   src={formData.imageUrl}

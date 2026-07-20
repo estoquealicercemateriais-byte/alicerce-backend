@@ -70,9 +70,10 @@ export default function OrdersPage() {
       </div>
 
       <div className="bg-card border rounded-lg shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
               <TableHead className="w-[100px]">ID</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Cliente</TableHead>
@@ -131,6 +132,7 @@ export default function OrdersPage() {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
     </div>
   );
@@ -235,8 +237,9 @@ function OrderDialog({ order }: { order: any }) {
         </div>
 
         <div className="border rounded-md overflow-hidden">
-          <Table>
-            <TableHeader className="bg-muted">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-muted">
               <TableRow>
                 <TableHead>Item</TableHead>
                 <TableHead className="text-center">Qtd</TableHead>
@@ -273,6 +276,7 @@ function OrderDialog({ order }: { order: any }) {
               )}
             </TableBody>
           </Table>
+          </div>
         </div>
 
         {order.notes && (

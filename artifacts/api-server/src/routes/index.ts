@@ -7,6 +7,7 @@ import ordersRouter from "./orders";
 import budgetsRouter from "./budgets";
 import settingsRouter from "./settings";
 import webhookRouter from "./webhook";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(ordersRouter);
 router.use(budgetsRouter);
 router.use(settingsRouter);
 router.use(webhookRouter);
+router.use(storageRouter);
 
 export default router;

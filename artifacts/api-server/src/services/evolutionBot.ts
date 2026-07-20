@@ -163,13 +163,25 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
       .set({ lastMessage: reply, updatedAt: new Date() })
       .where(eq(conversationsTable.id, convo.id));
 
-    await sendEvolutionMessage(
-      settings.evolutionApiUrl,
-      settings.evolutionApiKey,
-      settings.evolutionInstance,
-      phoneNumber,
-      reply,
-    );
+    try {
+      await sendEvolutionMessage(
+        settings.evolutionApiUrl,
+        settings.evolutionApiKey,
+        settings.evolutionInstance,
+        phoneNumber,
+        reply,
+      );
+    } catch (err) {
+      logger.warn({ err, phoneNumber }, "Failed to send text reply; continuing with post-reply media");
+    }
+
+    // Reload conversation so post-reply steps use the updated botStep
+    const [updatedConvo] = await db
+      .select()
+      .from(conversationsTable)
+      .where(eq(conversationsTable.id, convo.id));
+    if (!updatedConvo) return;
+    convo = updatedConvo;
 
     // If user asked for products/offers, send active offers with images
     if (convo.botStep === "catalog" || text.trim().toLowerCase() === "1") {
@@ -179,6 +191,18 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
         settings.evolutionInstance,
         phoneNumber,
         convo.id,
+      );
+    }
+
+    // If user asked about a specific product by keyword, send product info with image
+    if (convo.botStep === "product_query") {
+      await sendProductInfo(
+        settings.evolutionApiUrl,
+        settings.evolutionApiKey,
+        settings.evolutionInstance,
+        phoneNumber,
+        convo.id,
+        reply,
       );
     }
   } catch (err) {
@@ -284,6 +308,17 @@ async function getBotReply(
         .where(eq(conversationsTable.id, convo.id));
       return "Transferindo para um atendente humano. Aguarde um momento, em breve alguém irá te atender!";
     }
+
+    // Try to match a specific product by keywords
+    const productMatch = await findProductByKeywords(normalized);
+    if (productMatch) {
+      await db
+        .update(conversationsTable)
+        .set({ botStep: "product_query" })
+        .where(eq(conversationsTable.id, convo.id));
+      return buildProductInfoMessage(productMatch);
+    }
+
     // Default: show menu
     return buildMenuMessage(settings);
   }
@@ -340,6 +375,87 @@ async function buildCatalogMessage(): Promise<string> {
   }
 
   return `*Confira nossas ofertas especiais!* 🏗️\n\nEm breve enviarei as imagens e preços dos produtos em promoção.\n\nDigite *menu* para voltar ou *2* para solicitar um orçamento.`;
+}
+
+async function findProductByKeywords(text: string): Promise<typeof productsTable.$inferSelect | null> {
+  const products = await db.select().from(productsTable).where(eq(productsTable.inStock, true));
+  const words = text.split(/\s+/).filter((w) => w.length > 2);
+
+  let bestMatch: typeof productsTable.$inferSelect | null = null;
+  let bestScore = 0;
+
+  for (const product of products) {
+    const nameLower = product.name.toLowerCase();
+    const categoryLower = product.category.toLowerCase();
+    const descriptionLower = (product.description || "").toLowerCase();
+
+    let score = 0;
+    for (const word of words) {
+      const nameHas = nameLower.includes(word);
+      const categoryHas = categoryLower.includes(word);
+      const descriptionHas = descriptionLower.includes(word);
+
+      if (nameHas) score += 3;
+      else if (categoryHas) score += 2;
+      else if (descriptionHas) score += 1;
+
+      // Bonus for exact whole-word match in the name (e.g. "cimento" vs "fibrocimento")
+      const nameWords = nameLower.split(/[^a-z0-9çãõáéíóúâêîôû]+/);
+      if (nameWords.some((w) => w === word)) score += 2;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = product;
+    }
+  }
+
+  return bestScore >= 3 ? bestMatch : null;
+}
+
+function buildProductInfoMessage(product: typeof productsTable.$inferSelect): string {
+  const price = parseFloat(String(product.price)).toFixed(2);
+  return `*${product.name}*\n${product.category}\n\n${product.description || ""}\n\n💰 *R$ ${price}* / ${product.unit}\n\nDigite *menu* para voltar ou *2* para solicitar um orçamento.`;
+}
+
+async function sendProductInfo(
+  apiUrl: string,
+  apiKey: string,
+  instance: string,
+  to: string,
+  conversationId: number,
+  caption: string,
+): Promise<void> {
+  // Parse product name from caption (first line)
+  const productName = caption.split("\n")[0].replace(/^\*+|\*+$/g, "");
+  const [product] = await db
+    .select()
+    .from(productsTable)
+    .where(eq(productsTable.name, productName));
+
+  if (!product) return;
+
+  if (product.imageUrl) {
+    try {
+      await sendEvolutionMedia(apiUrl, apiKey, instance, to, product.imageUrl, caption, "image");
+      await db.insert(messagesTable).values({
+        conversationId,
+        content: `[Produto] ${product.name} - R$ ${parseFloat(String(product.price)).toFixed(2)}`,
+        direction: "outbound",
+        messageType: "image",
+      });
+    } catch (err) {
+      logger.warn({ err, product: product.id }, "Failed to send product image; falling back to text");
+      await sendEvolutionMessage(apiUrl, apiKey, instance, to, caption);
+    }
+  } else {
+    await sendEvolutionMessage(apiUrl, apiKey, instance, to, caption);
+  }
+
+  await db
+    .update(conversationsTable)
+    .set({ botStep: "menu" })
+    .where(eq(conversationsTable.id, conversationId));
 }
 
 function buildStoreInfoMessage(settings: typeof storeSettingsTable.$inferSelect): string {
