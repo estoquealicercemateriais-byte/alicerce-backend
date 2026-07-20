@@ -3,20 +3,34 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Alicerce WhatsBot API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: Dashboard operations
+  - name: products
+    description: Product catalog operations
+  - name: conversations
+    description: WhatsApp conversation management
+  - name: orders
+    description: Order management
+  - name: budget-requests
+    description: Budget request management
+  - name: settings
+    description: Store settings
+  - name: webhook
+    description: Evolution API webhook
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +38,728 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List all products
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: inStock
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Not found
+    put:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /conversations:
+    get:
+      operationId: listConversations
+      tags: [conversations]
+      summary: List WhatsApp conversations
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [bot, human, closed]
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+
+  /conversations/{id}:
+    get:
+      operationId: getConversation
+      tags: [conversations]
+      summary: Get a conversation with messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationDetail"
+        "404":
+          description: Not found
+
+  /conversations/{id}/send:
+    post:
+      operationId: sendMessage
+      tags: [conversations]
+      summary: Send a message to a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "200":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /conversations/{id}/status:
+    put:
+      operationId: updateConversationStatus
+      tags: [conversations]
+      summary: Update conversation status (bot/human/closed)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationStatusUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  /conversations/{id}/read:
+    put:
+      operationId: markConversationRead
+      tags: [conversations]
+      summary: Mark conversation as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, delivered, cancelled]
+      responses:
+        "200":
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get an order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Not found
+
+  /orders/{id}/status:
+    put:
+      operationId: updateOrderStatus
+      tags: [orders]
+      summary: Update order status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderStatusUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /budget-requests:
+    get:
+      operationId: listBudgetRequests
+      tags: [budget-requests]
+      summary: List budget requests
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, attended, closed]
+      responses:
+        "200":
+          description: List of budget requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetRequest"
+
+  /budget-requests/{id}:
+    put:
+      operationId: updateBudgetRequest
+      tags: [budget-requests]
+      summary: Update a budget request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetRequestUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetRequest"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get store settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreSettings"
+    put:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update store settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreSettingsInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreSettings"
+
+  /webhook/evolution:
+    post:
+      operationId: evolutionWebhook
+      tags: [webhook]
+      summary: Evolution API webhook receiver
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvolutionPayload"
+      responses:
+        "200":
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookResult"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    DashboardStats:
+      type: object
+      required: [totalConversations, activeBot, awaitingHuman, totalProducts, pendingOrders, pendingBudgets, recentConversations]
+      properties:
+        totalConversations:
+          type: integer
+        activeBot:
+          type: integer
+        awaitingHuman:
+          type: integer
+        totalProducts:
+          type: integer
+        pendingOrders:
+          type: integer
+        pendingBudgets:
+          type: integer
+        recentConversations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Conversation"
+
+    Product:
+      type: object
+      required: [id, name, category, price, unit, inStock, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        price:
+          type: number
+        unit:
+          type: string
+        description:
+          type: ["string", "null"]
+        inStock:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    ProductInput:
+      type: object
+      required: [name, category, price, unit]
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        price:
+          type: number
+        unit:
+          type: string
+        description:
+          type: string
+        inStock:
+          type: boolean
+
+    Conversation:
+      type: object
+      required: [id, whatsappNumber, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        whatsappNumber:
+          type: string
+        customerName:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [bot, human, closed]
+        lastMessage:
+          type: ["string", "null"]
+        unreadCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Message:
+      type: object
+      required: [id, conversationId, content, direction, createdAt]
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        content:
+          type: string
+        direction:
+          type: string
+          enum: [inbound, outbound]
+        messageType:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ConversationDetail:
+      type: object
+      required: [id, whatsappNumber, status, messages, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        whatsappNumber:
+          type: string
+        customerName:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [bot, human, closed]
+        lastMessage:
+          type: ["string", "null"]
+        unreadCount:
+          type: integer
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MessageInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+
+    ConversationStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [bot, human, closed]
+
+    Order:
+      type: object
+      required: [id, whatsappNumber, status, total, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        whatsappNumber:
+          type: string
+        customerName:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, confirmed, delivered, cancelled]
+        total:
+          type: number
+        notes:
+          type: ["string", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderItem:
+      type: object
+      required: [id, productName, quantity, unitPrice]
+      properties:
+        id:
+          type: integer
+        productId:
+          type: ["integer", "null"]
+        productName:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+
+    OrderInput:
+      type: object
+      required: [whatsappNumber, items]
+      properties:
+        whatsappNumber:
+          type: string
+        customerName:
+          type: string
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItemInput"
+
+    OrderItemInput:
+      type: object
+      required: [productName, quantity, unitPrice]
+      properties:
+        productId:
+          type: integer
+        productName:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+
+    OrderStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, confirmed, delivered, cancelled]
+
+    BudgetRequest:
+      type: object
+      required: [id, whatsappNumber, description, status, createdAt]
+      properties:
+        id:
+          type: integer
+        whatsappNumber:
+          type: string
+        customerName:
+          type: ["string", "null"]
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, attended, closed]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    BudgetRequestUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, attended, closed]
+        notes:
+          type: string
+
+    StoreSettings:
+      type: object
+      required: [id, storeName]
+      properties:
+        id:
+          type: integer
+        storeName:
+          type: string
+        address:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        whatsappNumber:
+          type: ["string", "null"]
+        openingHours:
+          type: ["string", "null"]
+        evolutionApiUrl:
+          type: ["string", "null"]
+        evolutionApiKey:
+          type: ["string", "null"]
+        evolutionInstance:
+          type: ["string", "null"]
+        botWelcomeMessage:
+          type: ["string", "null"]
+
+    StoreSettingsInput:
+      type: object
+      properties:
+        storeName:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        whatsappNumber:
+          type: string
+        openingHours:
+          type: string
+        evolutionApiUrl:
+          type: string
+        evolutionApiKey:
+          type: string
+        evolutionInstance:
+          type: string
+        botWelcomeMessage:
+          type: string
+
+    EvolutionPayload:
+      type: object
+      additionalProperties: true
+
+    WebhookResult:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string

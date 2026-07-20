@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Alicerce - WhatsBot Dashboard"
+version = "1.0.0"
+id = "artifacts/whatsbot-dashboard"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23702
+
+[services.development]
+run = "pnpm --filter @workspace/whatsbot-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/whatsbot-dashboard", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/whatsbot-dashboard/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23702"
+BASE_PATH = "/"

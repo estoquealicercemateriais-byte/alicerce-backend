@@ -1,45 +1,67 @@
-# [Project name]
+# Alicerce WhatsBot
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Sistema completo de atendimento via WhatsApp para a **Alicerce Materiais para Construção**, com painel de gestão web e bot automatizado via Evolution API.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/api-server run dev` — rodar servidor API (porta 5000)
+- `pnpm --filter @workspace/whatsbot-dashboard run dev` — rodar painel web
+- `pnpm run typecheck` — typecheck completo
+- `pnpm --filter @workspace/api-spec run codegen` — regenerar hooks e schemas da spec OpenAPI
+- `pnpm --filter @workspace/db run push` — aplicar mudanças de schema no DB (dev only)
+- Required env: `DATABASE_URL` — string de conexão Postgres
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
+- Validation: Zod v3
 - API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Frontend: React + Vite + Tailwind + shadcn/ui + TanStack Query
+- WhatsApp: Evolution API (self-hosted)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — contrato OpenAPI (source of truth)
+- `lib/db/src/schema/` — schema do banco (products, conversations, messages, orders, order_items, budget_requests, store_settings)
+- `artifacts/api-server/src/routes/` — rotas Express
+- `artifacts/api-server/src/services/evolutionBot.ts` — lógica do bot e integração Evolution API
+- `artifacts/whatsbot-dashboard/src/pages/` — páginas do painel web
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Bot opera como máquina de estados (campo `bot_step` na tabela conversations)
+- Status da conversa: `bot` (bot respondendo), `human` (atendente assumiu), `closed` (encerrado)
+- Webhook da Evolution API recebe mensagens em `/api/webhook/evolution`
+- Configurações da Evolution API ficam na tabela `store_settings` (URL, API key, instance name)
+- Mensagens outbound são salvas no DB antes de tentar enviar via Evolution (falha silenciosa se API não configurada)
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Painel de Controle**: visão geral com métricas e conversas recentes
+- **Conversas**: lista com status + painel lateral de mensagens, envio manual e toggle bot/humano
+- **Pedidos**: gestão de pedidos com itens e atualização de status
+- **Orçamentos**: solicitações de orçamento dos clientes com notas internas
+- **Catálogo**: CRUD completo de produtos (nome, categoria, preço, unidade, estoque)
+- **Configurações**: dados da loja e credenciais da Evolution API
+
+## WhatsApp Bot Flow
+
+```
+Menu principal → 1 (Produtos) → exibe catálogo → menu
+             → 2 (Orçamento) → solicita descrição → salva BudgetRequest → menu
+             → 3 (Pedido) → informa equipe → menu
+             → 4 (Horário/Local) → exibe info da loja → menu
+             → 5 (Atendente) → muda status para "human" → atendente assume
+```
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+_Populate as you build._
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Para integrar a Evolution API: configure URL, API Key e Instance Name em Configurações > Evolution API
+- O webhook deve ser configurado na Evolution API apontando para `/api/webhook/evolution`
+- Ao mudar schema do DB, rodar `pnpm --filter @workspace/db run push` antes de reiniciar o servidor
