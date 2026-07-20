@@ -1,0 +1,8 @@
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "corepack pnpm --filter @workspace/api-server start"
+  }
+}

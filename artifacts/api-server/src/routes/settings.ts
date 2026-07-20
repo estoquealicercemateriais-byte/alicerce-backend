@@ -24,6 +24,7 @@ async function ensureSettings() {
     const [created] = await db.insert(storeSettingsTable).values({
       storeName: "Alicerce Materiais para Construção",
       openingHours: "Segunda a Sexta: 7h às 18h | Sábado: 7h às 13h",
+      evolutionApiUrl: "https://alicercewats-production.up.railway.app",
       botWelcomeMessage:
         "Olá! Bem-vindo à Alicerce Materiais para Construção! 🏗️\n\nComo posso ajudar?\n\n1️⃣ Consultar produtos e preços\n2️⃣ Solicitar orçamento\n3️⃣ Acompanhar pedido\n4️⃣ Horário e localização\n5️⃣ Falar com atendente",
     }).returning();

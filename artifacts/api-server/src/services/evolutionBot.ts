@@ -8,6 +8,17 @@ import {
 } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { FloodProtection, createMessageFingerprint } from "../lib/floodProtection";
+
+const inboundFloodProtection = new FloodProtection({
+  cooldownMs: 3_000,
+  maxMessagesPerMinute: 20,
+});
+
+const outboundFloodProtection = new FloodProtection({
+  cooldownMs: 1_500,
+  maxMessagesPerMinute: 10,
+});
 
 export async function sendEvolutionMessage(
   apiUrl: string,
@@ -16,6 +27,12 @@ export async function sendEvolutionMessage(
   to: string,
   text: string,
 ): Promise<void> {
+  const outboundFingerprint = createMessageFingerprint(to, undefined, text);
+  if (!outboundFloodProtection.shouldProcess(outboundFingerprint)) {
+    logger.info({ to, fingerprint: outboundFingerprint }, "Skipping outbound message due to flood protection");
+    return;
+  }
+
   const url = `${apiUrl.replace(/\/$/, "")}/message/sendText/${instance}`;
   const response = await fetch(url, {
     method: "POST",
@@ -45,6 +62,12 @@ export async function sendEvolutionMedia(
   mediaType: "image" | "video" | "document" = "image",
   fileName?: string,
 ): Promise<void> {
+  const outboundFingerprint = createMessageFingerprint(to, mediaUrl, caption);
+  if (!outboundFloodProtection.shouldProcess(outboundFingerprint)) {
+    logger.info({ to, fingerprint: outboundFingerprint }, "Skipping outbound media message due to flood protection");
+    return;
+  }
+
   const url = `${apiUrl.replace(/\/$/, "")}/message/sendMedia/${instance}`;
   const response = await fetch(url, {
     method: "POST",
@@ -99,6 +122,13 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
     const text = conversation2 ?? (extendedText?.["text"] as string | undefined) ?? "";
     if (!text.trim()) return;
 
+    const messageId = (message["id"] as string | undefined) ?? (key["id"] as string | undefined) ?? "";
+    const inboundFingerprint = createMessageFingerprint(phoneNumber, messageId, text);
+    if (!inboundFloodProtection.shouldProcess(inboundFingerprint)) {
+      logger.info({ phoneNumber, fingerprint: inboundFingerprint }, "Skipping duplicate or burst inbound message");
+      return;
+    }
+
     // Get or create conversation
     let [convo] = await db
       .select()
@@ -146,7 +176,14 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
 
     // Get settings
     const [settings] = await db.select().from(storeSettingsTable);
-    if (!settings?.evolutionApiUrl || !settings?.evolutionApiKey || !settings?.evolutionInstance) return;
+    const configuredUrl = settings?.evolutionApiUrl?.trim() || "https://alicercewats-production.up.railway.app";
+    const configuredKey = settings?.evolutionApiKey?.trim() || "";
+    const configuredInstance = settings?.evolutionInstance?.trim() || "";
+
+    if (!configuredUrl) return;
+    if (!configuredKey || !configuredInstance) {
+      logger.warn({ phoneNumber, configuredUrl, configuredInstance: !!configuredInstance }, "Evolution API credentials missing; skipping outbound delivery");
+    }
 
     const reply = await getBotReply(convo, text.trim(), settings);
     if (!reply) return;
@@ -165,9 +202,9 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
 
     try {
       await sendEvolutionMessage(
-        settings.evolutionApiUrl,
-        settings.evolutionApiKey,
-        settings.evolutionInstance,
+        configuredUrl,
+        configuredKey,
+        configuredInstance,
         phoneNumber,
         reply,
       );
@@ -186,9 +223,9 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
     // If user asked for products/offers, send active offers with images
     if (convo.botStep === "catalog" || text.trim().toLowerCase() === "1") {
       await sendActiveOffers(
-        settings.evolutionApiUrl,
-        settings.evolutionApiKey,
-        settings.evolutionInstance,
+        configuredUrl,
+        configuredKey,
+        configuredInstance,
         phoneNumber,
         convo.id,
       );
@@ -197,9 +234,9 @@ export async function handleIncomingMessage(payload: Record<string, unknown>): P
     // If user asked about a specific product by keyword, send product info with image
     if (convo.botStep === "product_query") {
       await sendProductInfo(
-        settings.evolutionApiUrl,
-        settings.evolutionApiKey,
-        settings.evolutionInstance,
+        configuredUrl,
+        configuredKey,
+        configuredInstance,
         phoneNumber,
         convo.id,
         reply,

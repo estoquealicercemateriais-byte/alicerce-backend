@@ -104,6 +104,7 @@ export function ObjectUploader({
         open={showModal}
         onRequestClose={() => setShowModal(false)}
         proudlyDisplayPoweredByUppy={false}
+        target={typeof document !== 'undefined' ? document.body as unknown as string : undefined}
       />
     </div>
   );

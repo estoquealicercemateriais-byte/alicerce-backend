@@ -7,8 +7,6 @@ import {
   useRequestUploadUrl,
   getListProductsQueryKey,
 } from "@workspace/api-client-react";
-import { ObjectUploader } from "@workspace/object-storage-web";
-import type { UppyFile } from "@uppy/core";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Table,
@@ -170,37 +168,61 @@ export default function ProductsPage() {
 
 function ImageUploadButton({ onUploaded }: { onUploaded: (url: string) => void }) {
   const requestUpload = useRequestUploadUrl();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("A imagem deve ter no máximo 5MB.");
+      return;
+    }
+    try {
+      setUploading(true);
+      const res = await requestUpload.mutateAsync({
+        data: {
+          name: file.name,
+          size: file.size,
+          contentType: file.type,
+        },
+      });
+      const uploadRes = await fetch(res.uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
+      const base = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+      onUploaded(`${base}/api/storage${res.objectPath}`);
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao enviar imagem. Tente novamente.");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
 
   return (
-    <ObjectUploader
-      maxNumberOfFiles={1}
-      maxFileSize={5 * 1024 * 1024}
-      buttonClassName="px-3 py-2 border rounded-md text-sm font-medium hover:bg-muted transition-colors"
-      onGetUploadParameters={async (file: UppyFile<Record<string, unknown>, Record<string, unknown>>) => {
-        const res = await requestUpload.mutateAsync({
-          data: {
-            name: file.name,
-            size: file.size ?? 0,
-            contentType: file.type,
-          },
-        });
-        return {
-          method: "PUT" as const,
-          url: res.uploadURL,
-          headers: { "Content-Type": file.type },
-        };
-      }}
-      onComplete={(result: { successful?: Array<{ response?: { body?: { objectPath?: string } } }> }) => {
-        const uploaded = result.successful?.[0];
-        if (uploaded?.response?.body?.objectPath) {
-          const objectPath = uploaded.response.body.objectPath;
-          const base = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
-          onUploaded(`${base}/api/storage${objectPath}`);
-        }
-      }}
-    >
-      Upload
-    </ObjectUploader>
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={uploading}
+        onClick={() => inputRef.current?.click()}
+      >
+        {uploading ? "Enviando..." : "Upload"}
+      </Button>
+    </>
   );
 }
 
