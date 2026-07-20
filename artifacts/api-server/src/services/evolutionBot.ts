@@ -29,7 +29,9 @@ export async function sendEvolutionMessage(
     }),
   });
   if (!response.ok) {
-    logger.warn({ status: response.status, to }, "Failed to send Evolution message");
+    const body = await response.text().catch(() => "");
+    logger.warn({ status: response.status, body, to, url }, "Failed to send Evolution message");
+    throw new Error(`Evolution API error: ${response.status} ${body}`);
   }
 }
 
