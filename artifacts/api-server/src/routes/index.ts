@@ -8,6 +8,7 @@ import budgetsRouter from "./budgets";
 import settingsRouter from "./settings";
 import webhookRouter from "./webhook";
 import storageRouter from "./storage";
+import whatsappTestRouter from "./whatsappTest";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(budgetsRouter);
 router.use(settingsRouter);
 router.use(webhookRouter);
 router.use(storageRouter);
+router.use(whatsappTestRouter);
 
 export default router;

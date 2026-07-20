@@ -29,6 +29,24 @@ Por padrao o backend nao envia respostas automaticas nem permite envio manual pe
 
 O webhook ignora mensagens de grupos, broadcasts, status e newsletters. Comandos `parar`, `sair`, `cancelar`, `bloquear`, `remover`, `descadastrar` e `stop` fecham a conversa e interrompem respostas automaticas.
 
+### Teste real no WhatsApp
+Para testar com seu proprio numero ou um contato escolhido, habilite temporariamente no Railway:
+
+- `WHATSAPP_TEST_MODE_ENABLED=true`
+- `WHATSAPP_TEST_ALLOWED_NUMBERS=5511999999999`
+- `ADMIN_API_KEY=uma-chave-forte`
+
+Depois envie uma mensagem de teste:
+
+```bash
+curl -X POST https://alicerce-backend-backend.up.railway.app/api/test/whatsapp/send \
+  -H "Content-Type: application/json" \
+  -H "x-admin-api-key: uma-chave-forte" \
+  -d '{"to":"5511999999999","message":"Teste do WhatsBot. Responda oi para testar o webhook."}'
+```
+
+Use o numero em formato internacional, somente digitos: `55` + DDD + numero. Ao terminar, desligue `WHATSAPP_TEST_MODE_ENABLED`.
+
 ## Banco de dados Supabase
 Use a URL de conexão do Supabase no campo DATABASE_URL.
 Exemplo:
