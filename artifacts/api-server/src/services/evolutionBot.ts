@@ -16,7 +16,7 @@ export async function sendEvolutionMessage(
   to: string,
   text: string,
 ): Promise<void> {
-  const url = `${apiUrl}/message/sendText/${instance}`;
+  const url = `${apiUrl.replace(/\/$/, "")}/message/sendText/${instance}`;
   const response = await fetch(url, {
     method: "POST",
     headers: {
